@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bankovni Izvodi — Bank Statement Converter</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f0f4fa;
+      --surface: #ffffff;
+      --primary: #1a3a6b;
+      --primary-light: #2952a3;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --green: #16a34a;
+      --red: #dc2626;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #dde3ef;
+      --radius: 12px;
+      --shadow: 0 4px 24px rgba(26,58,107,.10);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 68px;
+      box-shadow: 0 2px 14px rgba(0,0,0,.22);
+    }
+
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -.01em; }
+    header .sub { font-size: .78rem; color: #9bb5d8; margin-top: 2px; }
+
+    /* Language switcher */
+    .lang-switcher {
+      display: flex;
+      gap: 4px;
+      background: rgba(255,255,255,.08);
+      border-radius: 8px;
+      padding: 4px;
+      flex-shrink: 0;
+    }
+
+    .lang-btn {
+      background: none;
+      border: none;
+      color: #9bb5d8;
+      font-size: .78rem;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      letter-spacing: .04em;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+
+    .lang-btn:hover  { background: rgba(255,255,255,.12); color: #fff; }
+    .lang-btn.active { background: rgba(255,255,255,.22); color: #fff; }
+
+    /* ── Main ── */
+    main { max-width: 1140px; margin: 40px auto; padding: 0 20px 60px; }
+
+    /* ── Upload card ── */
+    .upload-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 40px;
+      text-align: center;
+    }
+
+    .drop-zone {
+      border: 2.5px dashed var(--border);
+      border-radius: 10px;
+      padding: 54px 24px;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+    }
+
+    .drop-zone.drag-over { border-color: var(--accent); background: #eff6ff; }
+
+    .drop-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+
+    .drop-icon {
+      width: 58px; height: 58px;
+      background: #eff6ff; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 18px;
+    }
+
+    .drop-zone h2 { font-size: 1.05rem; font-weight: 600; margin-bottom: 6px; }
+    .drop-zone p  { font-size: .87rem; color: var(--muted); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 22px; border: none; border-radius: 8px;
+      font-size: .92rem; font-weight: 600; cursor: pointer;
+      transition: background .16s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; transform: none; }
+    .btn-demo {
+      background: none; color: var(--muted); border: 1.5px dashed var(--border);
+    }
+    .btn-demo:hover { background: #f1f5f9; border-color: var(--accent); color: var(--accent); }
+    .btn-csv   { background: #16a34a; color: #fff; }
+    .btn-csv:hover { background: #15803d; }
+    .btn-excel { background: #1d6f42; color: #fff; }
+    .btn-excel:hover { background: #145233; }
+
+    /* ── File info ── */
+    .file-info {
+      display: none; align-items: center; gap: 12px;
+      background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;
+      padding: 12px 18px; margin-top: 20px; text-align: left;
+    }
+    .file-info .name { font-weight: 600; font-size: .9rem; }
+    .file-info .size { font-size: .79rem; color: var(--muted); }
+
+    /* ── Status ── */
+    .status {
+      display: none; align-items: center; gap: 10px;
+      padding: 13px 18px; border-radius: 8px; margin-top: 18px;
+      font-size: .89rem; font-weight: 500;
+    }
+    .status.loading { background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; }
+    .status.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+    .status.error   { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+
+    .spinner {
+      width: 17px; height: 17px;
+      border: 3px solid #93c5fd; border-top-color: #1d4ed8;
+      border-radius: 50%;
+      animation: spin .7s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Progress ── */
+    .progress-wrap {
+      display: none; background: #dbeafe; border-radius: 99px;
+      height: 5px; margin-top: 12px; overflow: hidden;
+    }
+    .progress-bar { height: 100%; background: var(--accent); border-radius: 99px; transition: width .25s; width: 0%; }
+
+    /* ── Privacy note ── */
+    .privacy-note {
+      display: flex; align-items: center; gap: 8px;
+      background: #fefce8; border: 1px solid #fde68a; border-radius: 8px;
+      padding: 10px 16px; font-size: .81rem; color: #92400e; margin-top: 18px;
+    }
+
+    /* ── Results card ── */
+    .results-card {
+      display: none; background: var(--surface);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+      margin-top: 28px; overflow: hidden;
+    }
+
+    .results-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 24px; border-bottom: 1px solid var(--border);
+      flex-wrap: wrap; gap: 12px;
+    }
+    .results-header h3 { font-size: 1rem; font-weight: 700; }
+    .results-header .rh-sub { font-size: .81rem; color: var(--muted); margin-top: 2px; }
+    .export-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .badge {
+      display: inline-block; background: #dbeafe; color: #1d4ed8;
+      font-size: .73rem; font-weight: 700; padding: 2px 9px; border-radius: 99px;
+    }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; max-height: 540px; overflow-y: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+
+    thead th {
+      background: var(--primary); color: #fff;
+      padding: 11px 14px; text-align: left; font-weight: 600;
+      position: sticky; top: 0; white-space: nowrap; z-index: 1;
+    }
+
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    tbody tr:hover { background: #eff6ff; }
+
+    td {
+      padding: 9px 14px; border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .td-amount { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .td-amount.neg { color: var(--red); }
+    .td-amount.pos { color: var(--green); }
+    .td-desc { max-width: 340px; word-break: break-word; }
+
+    .empty-state { text-align: center; padding: 60px 24px; color: var(--muted); }
+    .empty-state svg { margin: 0 auto 14px; display: block; opacity: .3; }
+
+    @media (max-width: 640px) {
+      .upload-card { padding: 22px 14px; }
+      .results-header { flex-direction: column; align-items: flex-start; }
+      header { padding: 12px 16px; flex-wrap: wrap; }
+      header h1 { font-size: 1.05rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+      <rect width="38" height="38" rx="9" fill="#2952a3"/>
+      <path d="M8 13h22M8 19h15M8 25h10" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+      <circle cx="28" cy="25" r="6" fill="#2563eb"/>
+      <path d="M26 25l1.6 1.6L30.5 23" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <h1 data-i18n="title">Konverter bankovnih izvoda</h1>
+      <div class="sub" data-i18n="subtitle">Otpremite PDF — preuzmite kao CSV ili Excel</div>
+    </div>
+  </div>
+  <div class="lang-switcher">
+    <button class="lang-btn active" data-lang="sr">SR</button>
+    <button class="lang-btn" data-lang="en">EN</button>
+    <button class="lang-btn" data-lang="ru">RU</button>
+  </div>
+</header>
+
+<main>
+  <div class="upload-card">
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".pdf" />
+      <div class="drop-icon">
+        <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="#2563eb" stroke-width="2.1">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 0L8 8m4-4l4 4"/>
+        </svg>
+      </div>
+      <h2 data-i18n="dropTitle">Prevucite PDF bankovni izvod ovde</h2>
+      <p data-i18n="dropSub">ili kliknite da pretražite — samo PDF fajlovi</p>
+    </div>
+
+    <div class="file-info" id="fileInfo">
+      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="#16a34a" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+      </svg>
+      <div>
+        <div class="name" id="fileNameEl"></div>
+        <div class="size" id="fileSizeEl"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:22px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+      <button class="btn btn-primary" id="parseBtn" disabled>
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+        <span data-i18n="parseBtn">Izvuci transakcije</span>
+      </button>
+      <button class="btn btn-demo" id="demoBtn">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.1">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        <span data-i18n="demoBtn">Učitaj demo podatke</span>
+      </button>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="status" id="statusBar">
+      <div class="spinner" id="spinner" style="display:none"></div>
+      <svg id="statusIconOk" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" style="display:none;flex-shrink:0">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+      </svg>
+      <svg id="statusIconErr" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" style="display:none;flex-shrink:0">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+      </svg>
+      <span id="statusText"></span>
+    </div>
+
+    <div class="privacy-note">
+      <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.1">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+      </svg>
+      <span data-i18n="privacy">Fajl se obrađuje u vašem pregledaču — ništa se ne šalje na server.</span>
+    </div>
+  </div>
+
+  <div class="results-card" id="resultsCard">
+    <div class="results-header">
+      <div>
+        <h3><span data-i18n="resultsTitle">Izvučene transakcije</span> <span class="badge" id="rowCountEl">0</span></h3>
+        <div class="rh-sub" id="rhSub"></div>
+      </div>
+      <div class="export-btns">
+        <button class="btn btn-csv" id="csvBtn">
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 12l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          <span data-i18n="dlCsv">Preuzmi CSV</span>
+        </button>
+        <button class="btn btn-excel" id="excelBtn">
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 12l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          <span data-i18n="dlExcel">Preuzmi Excel</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="colDate">Datum</th>
+            <th data-i18n="colDesc">Opis</th>
+            <th data-i18n="colAmount">Iznos</th>
+            <th data-i18n="colDebit">Duguje</th>
+            <th data-i18n="colCredit">Potražuje</th>
+            <th data-i18n="colBalance">Stanje</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+// ═══════════════════════════════════════════════════════════════
+// TRANSLATIONS
+// ═══════════════════════════════════════════════════════════════
+const T = {
+  sr: {
+    title:      'Konverter bankovnih izvoda',
+    subtitle:   'Otpremite PDF — preuzmite kao CSV ili Excel',
+    dropTitle:  'Prevucite PDF bankovni izvod ovde',
+    dropSub:    'ili kliknite da pretražite — samo PDF fajlovi',
+    parseBtn:   'Izvuci transakcije',
+    privacy:    'Fajl se obrađuje u vašem pregledaču — ništa se ne šalje na server.',
+    resultsTitle:'Izvučene transakcije',
+    dlCsv:      'Preuzmi CSV',
+    dlExcel:    'Preuzmi Excel',
+    colDate:    'Datum',
+    colDesc:    'Opis',
+    colAmount:  'Iznos',
+    colDebit:   'Duguje',
+    colCredit:  'Potražuje',
+    colBalance: 'Stanje',
+    loading1:   'Čitam PDF…',
+    loading2:   'Analiziram transakcije…',
+    demoBtn:    'Učitaj demo podatke',
+    demoNote:   '⬇ Ovo su lažni podaci za testiranje — otpremite pravi PDF za pravi izvod.',
+    found:      n => `Pronađeno ${n} transakcij${n===1?'a':n<5?'e':'a'}.`,
+    noTx:       'Nisu pronađene transakcije. PDF može biti skenirani (slika) ili nepoznatog formata.',
+    emptyMsg:   'Nema ekstraktovanih transakcija.',
+    scrollHint: 'Skrolujte za sve redove — preuzmite za kompletan skup podataka',
+    errFile:    'Izaberite PDF fajl.',
+    errParse:   txt => `Greška pri čitanju PDF-a: ${txt}`,
+    sheetName:  'Transakcije',
+    filePrefix: 'bankovni_izvod',
+  },
+  en: {
+    title:      'Bank Statement Converter',
+    subtitle:   'Upload a PDF — download as CSV or Excel',
+    dropTitle:  'Drop your bank statement PDF here',
+    dropSub:    'or click to browse — PDF files only',
+    parseBtn:   'Extract Transactions',
+    privacy:    'Your file is processed entirely in your browser — nothing is sent to any server.',
+    resultsTitle:'Extracted Transactions',
+    dlCsv:      'Download CSV',
+    dlExcel:    'Download Excel',
+    colDate:    'Date',
+    colDesc:    'Description',
+    colAmount:  'Amount',
+    colDebit:   'Debit',
+    colCredit:  'Credit',
+    colBalance: 'Balance',
+    loading1:   'Reading PDF…',
+    loading2:   'Parsing transactions…',
+    demoBtn:    'Load demo data',
+    demoNote:   '⬇ This is fake data for testing — upload a real PDF for a real statement.',
+    found:      n => `Found ${n} transaction${n===1?'':'s'}.`,
+    noTx:       'No transactions found. The PDF may be scanned/image-based or use an unsupported layout.',
+    emptyMsg:   'No transactions extracted.',
+    scrollHint: 'Scroll to see all rows — download for the full dataset',
+    errFile:    'Please select a PDF file.',
+    errParse:   txt => `Failed to read PDF: ${txt}`,
+    sheetName:  'Transactions',
+    filePrefix: 'bank_statement',
+  },
+  ru: {
+    title:      'Конвертер банковских выписок',
+    subtitle:   'Загрузите PDF — скачайте как CSV или Excel',
+    dropTitle:  'Перетащите PDF выписку сюда',
+    dropSub:    'или нажмите для выбора файла — только PDF',
+    parseBtn:   'Извлечь транзакции',
+    privacy:    'Файл обрабатывается в вашем браузере — ничего не отправляется на сервер.',
+    resultsTitle:'Извлечённые транзакции',
+    dlCsv:      'Скачать CSV',
+    dlExcel:    'Скачать Excel',
+    colDate:    'Дата',
+    colDesc:    'Описание',
+    colAmount:  'Сумма',
+    colDebit:   'Дебет',
+    colCredit:  'Кредит',
+    colBalance: 'Баланс',
+    loading1:   'Читаю PDF…',
+    loading2:   'Анализирую транзакции…',
+    demoBtn:    'Загрузить демо-данные',
+    demoNote:   '⬇ Это тестовые данные — загрузите настоящий PDF для реальной выписки.',
+    found:      n => `Найдено ${n} транзакци${n===1?'я':n<5?'и':'й'}.`,
+    noTx:       'Транзакции не найдены. PDF может быть отсканированным или иметь неподдерживаемый формат.',
+    emptyMsg:   'Транзакции не извлечены.',
+    scrollHint: 'Прокрутите для просмотра всех строк — скачайте для полного набора данных',
+    errFile:    'Пожалуйста, выберите PDF файл.',
+    errParse:   txt => `Ошибка чтения PDF: ${txt}`,
+    sheetName:  'Транзакции',
+    filePrefix: 'bank_statement',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+// LANGUAGE SWITCHER
+// ═══════════════════════════════════════════════════════════════
+let lang = 'sr';
+
+function applyLang(l) {
+  lang = l;
+  const t = T[l];
+  document.documentElement.lang = l;
+  document.title = t.title + (l==='sr' ? ' | bankovniizvodi.rs' : '');
+
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (t[key] !== undefined) el.textContent = t[key];
+  });
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === l);
+  });
+
+  // Update dynamic text that's already rendered
+  if (parsedRows.length) updateDynamicText();
+}
+
+document.querySelectorAll('.lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyLang(btn.dataset.lang));
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PDF.js (loaded as module)
+// ═══════════════════════════════════════════════════════════════
+let pdfjsLib;
+async function getPdfJs() {
+  if (pdfjsLib) return pdfjsLib;
+  pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+  return pdfjsLib;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DOM REFS
+// ═══════════════════════════════════════════════════════════════
+const dropZone    = document.getElementById('dropZone');
+const fileInput   = document.getElementById('fileInput');
+const parseBtn    = document.getElementById('parseBtn');
+const fileInfo    = document.getElementById('fileInfo');
+const fileNameEl  = document.getElementById('fileNameEl');
+const fileSizeEl  = document.getElementById('fileSizeEl');
+const statusBar   = document.getElementById('statusBar');
+const statusText  = document.getElementById('statusText');
+const spinner     = document.getElementById('spinner');
+const statusIconOk  = document.getElementById('statusIconOk');
+const statusIconErr = document.getElementById('statusIconErr');
+const progressWrap  = document.getElementById('progressWrap');
+const progressBar   = document.getElementById('progressBar');
+const resultsCard   = document.getElementById('resultsCard');
+const tableBody     = document.getElementById('tableBody');
+const rowCountEl    = document.getElementById('rowCountEl');
+const rhSub         = document.getElementById('rhSub');
+const csvBtn        = document.getElementById('csvBtn');
+const excelBtn      = document.getElementById('excelBtn');
+
+let parsedRows = [];
+let selectedFile = null;
+
+// ═══════════════════════════════════════════════════════════════
+// FILE SELECTION
+// ═══════════════════════════════════════════════════════════════
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+function onFileSelected(file) {
+  const t = T[lang];
+  if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
+    setStatus('error', t.errFile); parseBtn.disabled = true; return;
+  }
+  selectedFile = file;
+  fileNameEl.textContent = file.name;
+  fileSizeEl.textContent = fmtSize(file.size);
+  fileInfo.style.display = 'flex';
+  parseBtn.disabled = false;
+  hideStatus();
+  parsedRows = [];
+  resultsCard.style.display = 'none';
+}
+
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) onFileSelected(fileInput.files[0]); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0]; if (f) onFileSelected(f);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// STATUS / PROGRESS
+// ═══════════════════════════════════════════════════════════════
+function setStatus(type, msg) {
+  statusBar.className = 'status ' + type;
+  statusBar.style.display = 'flex';
+  statusText.textContent = msg;
+  spinner.style.display      = type === 'loading' ? 'block' : 'none';
+  statusIconOk.style.display = type === 'success' ? 'block' : 'none';
+  statusIconErr.style.display= type === 'error'   ? 'block' : 'none';
+}
+function hideStatus() { statusBar.style.display = 'none'; }
+function setProgress(pct) {
+  progressWrap.style.display = 'block';
+  progressBar.style.width = pct + '%';
+  if (pct >= 100) setTimeout(() => { progressWrap.style.display = 'none'; }, 600);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PDF TEXT EXTRACTION
+// ═══════════════════════════════════════════════════════════════
+async function extractText(file) {
+  const lib = await getPdfJs();
+  const buf = await file.arrayBuffer();
+  const pdf = await lib.getDocument({ data: buf }).promise;
+  const pages = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    setProgress(Math.round((i / pdf.numPages) * 55));
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+
+    // Reconstruct lines by grouping items on the same Y coordinate
+    const lineMap = new Map();
+    for (const item of content.items) {
+      if (!item.str?.trim()) continue;
+      const y = Math.round(item.transform[5]);
+      if (!lineMap.has(y)) lineMap.set(y, []);
+      lineMap.get(y).push({ x: item.transform[4], text: item.str });
+    }
+    const lines = [...lineMap.keys()]
+      .sort((a, b) => b - a)
+      .map(y => lineMap.get(y).sort((a, b) => a.x - b.x).map(i => i.text).join(' '));
+
+    pages.push(lines.join('\n'));
+  }
+  return pages.join('\n<<PAGE>>\n');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TRANSACTION PARSER
+// ═══════════════════════════════════════════════════════════════
+const DATE_PATTERNS = [
+  /\b(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})\b/,
+  /\b(\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})\b/,
+  /\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{2,4})\b/i,
+  /\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{2,4})\b/i,
+];
+
+const AMOUNT_RE = /-?\$?[\d,]{1,12}\.\d{2}/g;
+
+function parseDate(s) {
+  if (!s) return '';
+  s = s.trim();
+  const tries = [
+    [/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/, m => `${m[3]}-${z(m[2])}-${z(m[1])}`],
+    [/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})$/,  m => `20${m[3]}-${z(m[2])}-${z(m[1])}`],
+    [/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/,  m => `${m[1]}-${z(m[2])}-${z(m[3])}`],
+    [/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/,  m => `${m[3]}-${z(m[1])}-${z(m[2])}`],
+  ];
+  for (const [re, fn] of tries) {
+    const m = s.match(re); if (m) return fn(m);
+  }
+  const d = new Date(s);
+  if (!isNaN(d)) {
+    const y = d.getFullYear() < 100 ? d.getFullYear() + 2000 : d.getFullYear();
+    return `${y}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+  }
+  return s;
+}
+
+function z(n) { return String(n).padStart(2, '0'); }
+
+function cleanAmt(s) {
+  if (!s) return null;
+  const n = parseFloat(s.replace(/[^\d.\-]/g, ''));
+  return isNaN(n) ? null : n;
+}
+
+function parseTransactions(text) {
+  const rows = [];
+  const lines = text.split('\n');
+  let pending = null;
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line === '<<PAGE>>') { if (pending) { rows.push(pending); pending = null; } continue; }
+
+    let dateMatch = null;
+    for (const pat of DATE_PATTERNS) {
+      const m = line.match(pat); if (m) { dateMatch = m; break; }
+    }
+
+    const amounts = [...(line.matchAll(AMOUNT_RE))].map(m => m[0]);
+
+    if (dateMatch && amounts.length > 0) {
+      if (pending) rows.push(pending);
+
+      const ds = dateMatch[1];
+      let desc = line.replace(ds, '');
+      for (const a of amounts) desc = desc.replace(a, '');
+      desc = desc.replace(/\s{2,}/g, ' ').trim();
+
+      let amount = null, balance = null;
+      if (amounts.length === 1) {
+        amount = cleanAmt(amounts[0]);
+      } else if (amounts.length >= 2) {
+        amount  = cleanAmt(amounts[amounts.length - 2]);
+        balance = cleanAmt(amounts[amounts.length - 1]);
+      }
+
+      pending = {
+        date:        parseDate(ds),
+        description: desc,
+        amount,
+        debit:  amount !== null && amount < 0 ? Math.abs(amount) : null,
+        credit: amount !== null && amount > 0 ? amount           : null,
+        balance,
+      };
+    } else if (!dateMatch && pending && amounts.length === 0 && line.length > 2) {
+      pending.description += ' ' + line;
+    } else if (pending) {
+      rows.push(pending); pending = null;
+    }
+  }
+  if (pending) rows.push(pending);
+  return rows.filter(r => r.date || r.description);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DEMO DATA
+// ═══════════════════════════════════════════════════════════════
+const DEMO_ROWS = [
+  { date:'2026-04-01', description:'Početno stanje / Opening balance',       amount:null,    debit:null,   credit:null,    balance:152430.00 },
+  { date:'2026-04-02', description:'Plaća — Firma d.o.o.',                   amount:85000.00,  debit:null,   credit:85000.00, balance:237430.00 },
+  { date:'2026-04-03', description:'Mercator — namirnice',                   amount:-4218.50,  debit:4218.50, credit:null,   balance:233211.50 },
+  { date:'2026-04-04', description:'NIS Petrol — gorivo',                    amount:-6540.00,  debit:6540.00, credit:null,   balance:226671.50 },
+  { date:'2026-04-05', description:'Raiffeisen — rata kredita',              amount:-32500.00, debit:32500.00,credit:null,   balance:194171.50 },
+  { date:'2026-04-07', description:'Amazon — pretplata Prime',               amount:-799.00,   debit:799.00,  credit:null,   balance:193372.50 },
+  { date:'2026-04-08', description:'A1 Srbija — račun za telefon',           amount:-2890.00,  debit:2890.00, credit:null,   balance:190482.50 },
+  { date:'2026-04-09', description:'Uplata stanarine — Marko Petrović',      amount:45000.00,  debit:null,   credit:45000.00, balance:235482.50 },
+  { date:'2026-04-10', description:'dm drogerie — kozmetika',                amount:-3126.80,  debit:3126.80, credit:null,   balance:232355.70 },
+  { date:'2026-04-11', description:'Lidl — namirnice',                       amount:-2944.20,  debit:2944.20, credit:null,   balance:229411.50 },
+  { date:'2026-04-14', description:'EPS — struja',                           amount:-5210.00,  debit:5210.00, credit:null,   balance:224201.50 },
+  { date:'2026-04-14', description:'Infostan — komunalije',                  amount:-8750.00,  debit:8750.00, credit:null,   balance:215451.50 },
+  { date:'2026-04-15', description:'Netflix — mesečna pretplata',            amount:-699.00,   debit:699.00,  credit:null,   balance:214752.50 },
+  { date:'2026-04-16', description:'Prenos na štedni račun',                 amount:-50000.00, debit:50000.00,credit:null,   balance:164752.50 },
+  { date:'2026-04-17', description:'Konzum — namirnice i domaćinstvo',       amount:-5631.40,  debit:5631.40, credit:null,   balance:159121.10 },
+  { date:'2026-04-18', description:'Glovo — dostava hrane',                  amount:-1890.00,  debit:1890.00, credit:null,   balance:157231.10 },
+  { date:'2026-04-21', description:'Povraćaj — Tehnomanija refundacija',     amount:12499.00,  debit:null,   credit:12499.00, balance:169730.10 },
+  { date:'2026-04-22', description:'Parking servis Beograd',                 amount:-1200.00,  debit:1200.00, credit:null,   balance:168530.10 },
+  { date:'2026-04-23', description:'MaxBet — uplate igara na sreću',         amount:-3000.00,  debit:3000.00, credit:null,   balance:165530.10 },
+  { date:'2026-04-24', description:'Apoteka Beograd — lekovi',               amount:-2340.50,  debit:2340.50, credit:null,   balance:163189.60 },
+  { date:'2026-04-25', description:'Intesa online transfer — Jelena Kovač',  amount:-15000.00, debit:15000.00,credit:null,   balance:148189.60 },
+  { date:'2026-04-28', description:'Freelance honorar — IT usluge',          amount:36000.00,  debit:null,   credit:36000.00, balance:184189.60 },
+  { date:'2026-04-29', description:'Bolt — taxi',                            amount:-980.00,   debit:980.00,  credit:null,   balance:183209.60 },
+  { date:'2026-04-30', description:'Kraj meseca — krajnje stanje',           amount:null,      debit:null,   credit:null,    balance:183209.60 },
+];
+
+const demoBtn = document.getElementById('demoBtn');
+
+demoBtn.addEventListener('click', () => {
+  const t = T[lang];
+  parsedRows = DEMO_ROWS;
+  selectedFile = null;
+  fileInfo.style.display = 'none';
+  parseBtn.disabled = true;
+  renderTable(parsedRows);
+  setStatus('success', t.demoNote);
+  resultsCard.style.display = 'block';
+  resultsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN PARSE ACTION
+// ═══════════════════════════════════════════════════════════════
+parseBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  const t = T[lang];
+  parseBtn.disabled = true;
+  parsedRows = [];
+  resultsCard.style.display = 'none';
+  setProgress(0);
+  setStatus('loading', t.loading1);
+
+  try {
+    const text = await extractText(selectedFile);
+    setStatus('loading', t.loading2);
+    setProgress(65);
+
+    parsedRows = parseTransactions(text);
+    setProgress(100);
+    renderTable(parsedRows);
+
+    if (parsedRows.length === 0) {
+      setStatus('error', t.noTx);
+    } else {
+      setStatus('success', t.found(parsedRows.length));
+      resultsCard.style.display = 'block';
+      resultsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  } catch (err) {
+    setStatus('error', t.errParse(err.message));
+  } finally {
+    parseBtn.disabled = false;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// TABLE RENDERING
+// ═══════════════════════════════════════════════════════════════
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function fmtNum(n) {
+  if (n === null || n === undefined) return '';
+  return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function amountCell(val) {
+  if (val === null || val === undefined || val === '') return '';
+  const cls = val < 0 ? 'neg' : 'pos';
+  const sign = val < 0 ? '−' : '+';
+  return `<span class="td-amount ${cls}">${sign}${fmtNum(Math.abs(val))}</span>`;
+}
+
+function renderTable(rows) {
+  const t = T[lang];
+  rowCountEl.textContent = rows.length;
+  rhSub.textContent = rows.length > 0 ? t.scrollHint : '';
+
+  if (!rows.length) {
+    tableBody.innerHTML = `<tr><td colspan="6">
+      <div class="empty-state">
+        <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.1">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <p>${esc(t.emptyMsg)}</p>
+      </div>
+    </td></tr>`;
+    return;
+  }
+
+  tableBody.innerHTML = rows.map(r => `<tr>
+    <td>${esc(r.date)}</td>
+    <td class="td-desc">${esc(r.description)}</td>
+    <td>${amountCell(r.amount)}</td>
+    <td>${r.debit  !== null ? `<span class="td-amount neg">${fmtNum(r.debit)}</span>`  : ''}</td>
+    <td>${r.credit !== null ? `<span class="td-amount pos">${fmtNum(r.credit)}</span>` : ''}</td>
+    <td>${r.balance !== null ? `<span style="font-variant-numeric:tabular-nums">${fmtNum(r.balance)}</span>` : ''}</td>
+  </tr>`).join('');
+}
+
+function updateDynamicText() {
+  const t = T[lang];
+  rhSub.textContent = parsedRows.length > 0 ? t.scrollHint : '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CSV EXPORT  (readable: real numbers, semicolon separator)
+// ═══════════════════════════════════════════════════════════════
+csvBtn.addEventListener('click', () => {
+  if (!parsedRows.length) return;
+  const t = T[lang];
+  const cols = [t.colDate, t.colDesc, t.colAmount, t.colDebit, t.colCredit, t.colBalance];
+  const sep = ';';  // semicolon — opens correctly in European Excel locales
+
+  const escape = v => {
+    const s = v === null || v === undefined ? '' : String(v);
+    return s.includes(sep) || s.includes('"') || s.includes('\n')
+      ? `"${s.replace(/"/g, '""')}"`
+      : s;
+  };
+
+  const numStr = n => n !== null && n !== undefined ? String(n.toFixed(2)).replace('.', ',') : '';
+
+  const lines = [
+    cols.map(escape).join(sep),
+    ...parsedRows.map(r => [
+      escape(r.date),
+      escape(r.description),
+      numStr(r.amount),
+      numStr(r.debit),
+      numStr(r.credit),
+      numStr(r.balance),
+    ].join(sep))
+  ].join('\r\n');
+
+  downloadBlob('﻿' + lines, `${t.filePrefix}.csv`, 'text/csv;charset=utf-8');
+});
+
+// ═══════════════════════════════════════════════════════════════
+// EXCEL EXPORT  (formatted: real numbers, colored amounts, autofit)
+// ═══════════════════════════════════════════════════════════════
+excelBtn.addEventListener('click', () => {
+  if (!parsedRows.length) return;
+  const t = T[lang];
+
+  const headers = [t.colDate, t.colDesc, t.colAmount, t.colDebit, t.colCredit, t.colBalance];
+
+  // Build data array with real numbers (not strings)
+  const data = parsedRows.map(r => [
+    r.date ?? '',
+    r.description ?? '',
+    r.amount  ?? '',
+    r.debit   ?? '',
+    r.credit  ?? '',
+    r.balance ?? '',
+  ]);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+
+  // Column widths
+  ws['!cols'] = [
+    { wch: 13 },  // Date
+    { wch: 46 },  // Description
+    { wch: 14 },  // Amount
+    { wch: 14 },  // Debit
+    { wch: 14 },  // Credit
+    { wch: 16 },  // Balance
+  ];
+
+  // Freeze header row
+  ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+  // Number format for amount columns (cols 2–5, 0-indexed)
+  const numFmt = '#,##0.00';
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let r = 1; r <= range.e.r; r++) {
+    for (let c = 2; c <= 5; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      if (ws[addr] && ws[addr].v !== '') {
+        ws[addr].t = 'n';
+        ws[addr].z = numFmt;
+      }
+    }
+  }
+
+  XLSX.utils.book_append_sheet(wb, ws, t.sheetName);
+  XLSX.writeFile(wb, `${t.filePrefix}.xlsx`);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// DOWNLOAD HELPER
+// ═══════════════════════════════════════════════════════════════
+function downloadBlob(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
