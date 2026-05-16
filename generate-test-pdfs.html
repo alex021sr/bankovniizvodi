@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test PDF Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f4fa; color: #1e293b; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 48px 20px;
+    }
+    h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 6px; }
+    .sub { color: #64748b; font-size: .9rem; margin-bottom: 36px; }
+
+    .cards { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+
+    .card {
+      background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(26,58,107,.10);
+      width: 340px; overflow: hidden;
+    }
+    .card-header {
+      padding: 18px 22px 14px;
+      border-bottom: 1px solid #dde3ef;
+    }
+    .card-bank { font-size: .72rem; font-weight: 700; color: #2563eb; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 4px; }
+    .card-title { font-size: 1rem; font-weight: 700; }
+    .card-period { font-size: .78rem; color: #64748b; margin-top: 2px; }
+
+    .tx-list { padding: 10px 0; max-height: 280px; overflow-y: auto; }
+    .tx-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 22px; font-size: .8rem; gap: 10px;
+    }
+    .tx-row:hover { background: #f8fafc; }
+    .tx-date { color: #64748b; flex-shrink: 0; width: 80px; }
+    .tx-desc { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tx-amount { font-weight: 600; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    .tx-amount.pos { color: #16a34a; }
+    .tx-amount.neg { color: #dc2626; }
+    .tx-amount.neu { color: #64748b; }
+
+    .card-footer { padding: 14px 22px; border-top: 1px solid #dde3ef; }
+    .dl-btn {
+      width: 100%; padding: 11px; border: none; border-radius: 8px;
+      background: #2563eb; color: #fff; font-size: .9rem; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background .15s;
+    }
+    .dl-btn:hover { background: #1d4ed8; }
+    .dl-btn:active { transform: scale(.97); }
+
+    .hint {
+      margin-top: 32px; background: #fefce8; border: 1px solid #fde68a;
+      border-radius: 10px; padding: 14px 20px; font-size: .83rem; color: #92400e;
+      max-width: 720px; text-align: center; line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Test PDF Generator</h1>
+<p class="sub">Download these two sample bank statements and drag them into the converter to test multi-file merge.</p>
+
+<div class="cards" id="cards"></div>
+
+<p class="hint">
+  Download both PDFs, then open the converter and drag them both onto the drop zone at the same time —
+  the transactions will be merged and sorted by date into a single export.
+</p>
+
+<script>
+const { jsPDF } = window.jspdf;
+
+const STATEMENTS = [
+  {
+    filename: 'raiffeisen_mart_2026.pdf',
+    bank:     'Raiffeisen Bank Srbija',
+    title:    'Izvod — Mart 2026',
+    period:   '01.03.2026 – 31.03.2026',
+    account:  'RS35265100000012345678',
+    txs: [
+      { date: '01.03.2026', desc: 'Pocetno stanje',              amount: null,       balance:  85430.00 },
+      { date: '03.03.2026', desc: 'Placa Firma doo',             amount:  75000.00,  balance: 160430.00 },
+      { date: '05.03.2026', desc: 'Mercator namirnice',          amount:  -3890.50,  balance: 156539.50 },
+      { date: '07.03.2026', desc: 'NIS Petrol gorivo',           amount:  -5200.00,  balance: 151339.50 },
+      { date: '10.03.2026', desc: 'Raiffeisen rata kredita',     amount: -32500.00,  balance: 118839.50 },
+      { date: '12.03.2026', desc: 'A1 Srbija racun za telefon',  amount:  -2890.00,  balance: 115949.50 },
+      { date: '14.03.2026', desc: 'EPS struja',                  amount:  -4870.00,  balance: 111079.50 },
+      { date: '15.03.2026', desc: 'Netflix mesecna pretplata',   amount:   -699.00,  balance: 110380.50 },
+      { date: '18.03.2026', desc: 'Lidl namirnice',              amount:  -2450.20,  balance: 107930.30 },
+      { date: '20.03.2026', desc: 'Uplata stanarine Petrovic',   amount:  45000.00,  balance: 152930.30 },
+      { date: '22.03.2026', desc: 'dm drogerie kozmetika',       amount:  -2780.00,  balance: 150150.30 },
+      { date: '25.03.2026', desc: 'Infostan komunalije',         amount:  -7900.00,  balance: 142250.30 },
+      { date: '28.03.2026', desc: 'Freelance honorar IT usluge', amount:  36000.00,  balance: 178250.30 },
+      { date: '31.03.2026', desc: 'Krajnje stanje',              amount: null,       balance: 178250.30 },
+    ],
+  },
+  {
+    filename: 'intesa_april_2026.pdf',
+    bank:     'Banca Intesa Srbija',
+    title:    'Izvod — April 2026',
+    period:   '01.04.2026 – 30.04.2026',
+    account:  'RS35160005400098765432',
+    txs: [
+      { date: '01.04.2026', desc: 'Pocetno stanje',              amount: null,       balance:  52100.00 },
+      { date: '02.04.2026', desc: 'Placa redovna uplata',        amount:  55000.00,  balance: 107100.00 },
+      { date: '04.04.2026', desc: 'Amazon pretplata Prime',      amount:   -799.00,  balance: 106301.00 },
+      { date: '06.04.2026', desc: 'Konzum namirnice',            amount:  -4210.80,  balance: 102090.20 },
+      { date: '08.04.2026', desc: 'Glovo dostava hrane',         amount:  -1450.00,  balance: 100640.20 },
+      { date: '10.04.2026', desc: 'Parking servis Beograd',      amount:  -1200.00,  balance:  99440.20 },
+      { date: '12.04.2026', desc: 'Apoteka Beograd lekovi',      amount:  -3120.50,  balance:  96319.70 },
+      { date: '15.04.2026', desc: 'Prenos na stedni racun',      amount: -30000.00,  balance:  66319.70 },
+      { date: '17.04.2026', desc: 'Bolt taxi',                   amount:   -980.00,  balance:  65339.70 },
+      { date: '20.04.2026', desc: 'Povracaj Tehnomanija',        amount:   8499.00,  balance:  73838.70 },
+      { date: '22.04.2026', desc: 'MaxBet uplate igara',         amount:  -2000.00,  balance:  71838.70 },
+      { date: '25.04.2026', desc: 'Intesa transfer Kovac',       amount: -10000.00,  balance:  61838.70 },
+      { date: '28.04.2026', desc: 'Freelance honorar web dev',   amount:  28000.00,  balance:  89838.70 },
+      { date: '30.04.2026', desc: 'Krajnje stanje',              amount: null,       balance:  89838.70 },
+    ],
+  },
+];
+
+function fmt(n) {
+  return Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function generatePdf(stmt) {
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const L = 40, W = 515;
+  let y = 50;
+
+  // Bank header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text(stmt.bank, L, y);
+  y += 22;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text('IZVOD O PROMENAMA NA RACUNU', L, y);
+  y += 14;
+  doc.text('Period: ' + stmt.period, L, y);
+  y += 12;
+  doc.text('Broj racuna: ' + stmt.account, L, y);
+  y += 24;
+
+  // Divider
+  doc.setDrawColor(180, 180, 200);
+  doc.line(L, y, L + W, y);
+  y += 14;
+
+  // Column headers
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('Datum',  L,       y);
+  doc.text('Opis transakcije', L + 80, y);
+  doc.text('Iznos',  L + 340, y);
+  doc.text('Stanje', L + 430, y);
+  y += 4;
+  doc.line(L, y, L + W, y);
+  y += 14;
+
+  // Transactions — each on one Y so PDF.js groups them as one line
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+
+  for (const tx of stmt.txs) {
+    const amtStr = tx.amount === null ? '' : (tx.amount < 0 ? '-' : '+') + fmt(tx.amount);
+    const balStr = fmt(tx.balance);
+
+    doc.text(tx.date,   L,       y);
+    doc.text(tx.desc,   L + 80,  y);
+    if (amtStr) doc.text(amtStr, L + 340, y);
+    doc.text(balStr,    L + 430, y);
+    y += 18;
+
+    if (y > 780) {
+      doc.addPage();
+      y = 50;
+    }
+  }
+
+  // Footer
+  y += 10;
+  doc.setDrawColor(180, 180, 200);
+  doc.line(L, y, L + W, y);
+  y += 14;
+  doc.setFontSize(8);
+  doc.setTextColor(120, 120, 140);
+  doc.text('Ovaj izvod je generisan automatski i sluzi iskljucivo za testiranje.', L, y);
+
+  doc.save(stmt.filename);
+}
+
+// Render cards
+function amountClass(n) {
+  if (n === null) return 'neu';
+  return n > 0 ? 'pos' : 'neg';
+}
+function amountLabel(n) {
+  if (n === null) return '—';
+  return (n > 0 ? '+' : '−') + fmt(n);
+}
+
+const container = document.getElementById('cards');
+
+for (const stmt of STATEMENTS) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <div class="card-header">
+      <div class="card-bank">${stmt.bank}</div>
+      <div class="card-title">${stmt.title}</div>
+      <div class="card-period">${stmt.period}</div>
+    </div>
+    <div class="tx-list">
+      ${stmt.txs.map(tx => `
+        <div class="tx-row">
+          <span class="tx-date">${tx.date}</span>
+          <span class="tx-desc" title="${tx.desc}">${tx.desc}</span>
+          <span class="tx-amount ${amountClass(tx.amount)}">${amountLabel(tx.amount)}</span>
+        </div>
+      `).join('')}
+    </div>
+    <div class="card-footer">
+      <button class="dl-btn" data-idx="${STATEMENTS.indexOf(stmt)}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M16 12l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+        Download ${stmt.filename}
+      </button>
+    </div>
+  `;
+  container.appendChild(card);
+}
+
+document.getElementById('cards').addEventListener('click', e => {
+  const btn = e.target.closest('[data-idx]');
+  if (!btn) return;
+  generatePdf(STATEMENTS[parseInt(btn.dataset.idx, 10)]);
+});
+</script>
+</body>
+</html>

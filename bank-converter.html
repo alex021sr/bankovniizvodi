@@ -48,7 +48,6 @@
     header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -.01em; }
     header .sub { font-size: .78rem; color: #9bb5d8; margin-top: 2px; }
 
-    /* Language switcher */
     .lang-switcher {
       display: flex;
       gap: 4px;
@@ -132,14 +131,66 @@
     .btn-excel { background: #1d6f42; color: #fff; }
     .btn-excel:hover { background: #145233; }
 
-    /* ── File info ── */
-    .file-info {
-      display: none; align-items: center; gap: 12px;
-      background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;
-      padding: 12px 18px; margin-top: 20px; text-align: left;
+    /* ── Files list ── */
+    .files-list {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 18px;
+      text-align: left;
     }
-    .file-info .name { font-weight: 600; font-size: .9rem; }
-    .file-info .size { font-size: .79rem; color: var(--muted); }
+
+    .files-list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: .78rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: 0 2px 4px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      transition: background .15s;
+    }
+
+    .file-item.error {
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+
+    .file-item-info { flex: 1; min-width: 0; }
+    .file-item-name {
+      font-weight: 600; font-size: .88rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .file-item-meta {
+      font-size: .76rem; color: var(--muted); margin-top: 1px;
+      display: flex; gap: 10px;
+    }
+    .file-item-status { font-size: .76rem; font-weight: 600; }
+    .file-item-status.ok    { color: var(--green); }
+    .file-item-status.err   { color: var(--red); }
+    .file-item-status.wait  { color: var(--muted); }
+    .file-item-status.busy  { color: var(--accent); }
+
+    .file-remove-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); padding: 4px; border-radius: 4px;
+      display: flex; align-items: center; flex-shrink: 0;
+      transition: color .15s, background .15s;
+    }
+    .file-remove-btn:hover { color: var(--red); background: #fee2e2; }
 
     /* ── Status ── */
     .status {
@@ -216,7 +267,11 @@
     .td-amount { font-variant-numeric: tabular-nums; font-weight: 600; }
     .td-amount.neg { color: var(--red); }
     .td-amount.pos { color: var(--green); }
-    .td-desc { max-width: 340px; word-break: break-word; }
+    .td-desc { max-width: 300px; word-break: break-word; }
+    .td-source {
+      max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-size: .78rem; color: var(--muted);
+    }
 
     .empty-state { text-align: center; padding: 60px 24px; color: var(--muted); }
     .empty-state svg { margin: 0 auto 14px; display: block; opacity: .3; }
@@ -254,25 +309,17 @@
 <main>
   <div class="upload-card">
     <div class="drop-zone" id="dropZone">
-      <input type="file" id="fileInput" accept=".pdf" />
+      <input type="file" id="fileInput" accept=".pdf" multiple />
       <div class="drop-icon">
         <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="#2563eb" stroke-width="2.1">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 12V4m0 0L8 8m4-4l4 4"/>
         </svg>
       </div>
-      <h2 data-i18n="dropTitle">Prevucite PDF bankovni izvod ovde</h2>
-      <p data-i18n="dropSub">ili kliknite da pretražite — samo PDF fajlovi</p>
+      <h2 data-i18n="dropTitle">Prevucite PDF bankovne izvode ovde</h2>
+      <p data-i18n="dropSub">ili kliknite da pretražite — podržano više PDF fajlova</p>
     </div>
 
-    <div class="file-info" id="fileInfo">
-      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="#16a34a" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
-      </svg>
-      <div>
-        <div class="name" id="fileNameEl"></div>
-        <div class="size" id="fileSizeEl"></div>
-      </div>
-    </div>
+    <div class="files-list" id="filesList"></div>
 
     <div style="margin-top:22px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
       <button class="btn btn-primary" id="parseBtn" disabled>
@@ -339,6 +386,7 @@
         <thead>
           <tr>
             <th data-i18n="colDate">Datum</th>
+            <th data-i18n="colSource">Fajl</th>
             <th data-i18n="colDesc">Opis</th>
             <th data-i18n="colAmount">Iznos</th>
             <th data-i18n="colDebit">Duguje</th>
@@ -358,91 +406,109 @@
 // ═══════════════════════════════════════════════════════════════
 const T = {
   sr: {
-    title:      'Konverter bankovnih izvoda',
-    subtitle:   'Otpremite PDF — preuzmite kao CSV ili Excel',
-    dropTitle:  'Prevucite PDF bankovni izvod ovde',
-    dropSub:    'ili kliknite da pretražite — samo PDF fajlovi',
-    parseBtn:   'Izvuci transakcije',
-    privacy:    'Fajl se obrađuje u vašem pregledaču — ništa se ne šalje na server.',
+    title:       'Konverter bankovnih izvoda',
+    subtitle:    'Otpremite PDF — preuzmite kao CSV ili Excel',
+    dropTitle:   'Prevucite PDF bankovne izvode ovde',
+    dropSub:     'ili kliknite da pretražite — podržano više PDF fajlova',
+    parseBtn:    'Izvuci transakcije',
+    privacy:     'Fajl se obrađuje u vašem pregledaču — ništa se ne šalje na server.',
     resultsTitle:'Izvučene transakcije',
-    dlCsv:      'Preuzmi CSV',
-    dlExcel:    'Preuzmi Excel',
-    colDate:    'Datum',
-    colDesc:    'Opis',
-    colAmount:  'Iznos',
-    colDebit:   'Duguje',
-    colCredit:  'Potražuje',
-    colBalance: 'Stanje',
-    loading1:   'Čitam PDF…',
-    loading2:   'Analiziram transakcije…',
-    demoBtn:    'Učitaj demo podatke',
-    demoNote:   '⬇ Ovo su lažni podaci za testiranje — otpremite pravi PDF za pravi izvod.',
-    found:      n => `Pronađeno ${n} transakcij${n===1?'a':n<5?'e':'a'}.`,
-    noTx:       'Nisu pronađene transakcije. PDF može biti skenirani (slika) ili nepoznatog formata.',
-    emptyMsg:   'Nema ekstraktovanih transakcija.',
-    scrollHint: 'Skrolujte za sve redove — preuzmite za kompletan skup podataka',
-    errFile:    'Izaberite PDF fajl.',
-    errParse:   txt => `Greška pri čitanju PDF-a: ${txt}`,
-    sheetName:  'Transakcije',
-    filePrefix: 'bankovni_izvod',
+    dlCsv:       'Preuzmi CSV',
+    dlExcel:     'Preuzmi Excel',
+    colDate:     'Datum',
+    colSource:   'Fajl',
+    colDesc:     'Opis',
+    colAmount:   'Iznos',
+    colDebit:    'Duguje',
+    colCredit:   'Potražuje',
+    colBalance:  'Stanje',
+    loading1:    'Čitam PDF…',
+    loading2:    i => `Analiziram fajl ${i}…`,
+    demoBtn:     'Učitaj demo podatke',
+    demoNote:    '⬇ Ovo su lažni podaci za testiranje — otpremite pravi PDF za pravi izvod.',
+    found:       (n, f) => `Pronađeno ${n} transakcij${n===1?'a':n<5?'e':'a'} iz ${f} fajl${f===1?'a':f<5?'a':'ova'}.`,
+    noTx:        'Nisu pronađene transakcije. PDF može biti skenirani (slika) ili nepoznatog formata.',
+    emptyMsg:    'Nema ekstraktovanih transakcija.',
+    scrollHint:  'Skrolujte za sve redove — preuzmite za kompletan skup podataka',
+    errFile:     'Izaberite PDF fajl.',
+    errParse:    (name, txt) => `Greška pri čitanju „${name}": ${txt}`,
+    sheetName:   'Transakcije',
+    filePrefix:  'bankovni_izvod',
+    filesHeader: n => `${n} fajl${n===1?'':n<5?'a':'ova'} izabran${n===1?'':'o'}`,
+    statusWait:  'Na čekanju',
+    statusBusy:  'Obradujem…',
+    statusOk:    n => `${n} transakcij${n===1?'a':n<5?'e':'a'}`,
+    statusErr:   'Greška',
   },
   en: {
-    title:      'Bank Statement Converter',
-    subtitle:   'Upload a PDF — download as CSV or Excel',
-    dropTitle:  'Drop your bank statement PDF here',
-    dropSub:    'or click to browse — PDF files only',
-    parseBtn:   'Extract Transactions',
-    privacy:    'Your file is processed entirely in your browser — nothing is sent to any server.',
+    title:       'Bank Statement Converter',
+    subtitle:    'Upload a PDF — download as CSV or Excel',
+    dropTitle:   'Drop your bank statement PDFs here',
+    dropSub:     'or click to browse — multiple PDFs supported',
+    parseBtn:    'Extract Transactions',
+    privacy:     'Your file is processed entirely in your browser — nothing is sent to any server.',
     resultsTitle:'Extracted Transactions',
-    dlCsv:      'Download CSV',
-    dlExcel:    'Download Excel',
-    colDate:    'Date',
-    colDesc:    'Description',
-    colAmount:  'Amount',
-    colDebit:   'Debit',
-    colCredit:  'Credit',
-    colBalance: 'Balance',
-    loading1:   'Reading PDF…',
-    loading2:   'Parsing transactions…',
-    demoBtn:    'Load demo data',
-    demoNote:   '⬇ This is fake data for testing — upload a real PDF for a real statement.',
-    found:      n => `Found ${n} transaction${n===1?'':'s'}.`,
-    noTx:       'No transactions found. The PDF may be scanned/image-based or use an unsupported layout.',
-    emptyMsg:   'No transactions extracted.',
-    scrollHint: 'Scroll to see all rows — download for the full dataset',
-    errFile:    'Please select a PDF file.',
-    errParse:   txt => `Failed to read PDF: ${txt}`,
-    sheetName:  'Transactions',
-    filePrefix: 'bank_statement',
+    dlCsv:       'Download CSV',
+    dlExcel:     'Download Excel',
+    colDate:     'Date',
+    colSource:   'File',
+    colDesc:     'Description',
+    colAmount:   'Amount',
+    colDebit:    'Debit',
+    colCredit:   'Credit',
+    colBalance:  'Balance',
+    loading1:    'Reading PDFs…',
+    loading2:    i => `Parsing file ${i}…`,
+    demoBtn:     'Load demo data',
+    demoNote:    '⬇ This is fake data for testing — upload a real PDF for a real statement.',
+    found:       (n, f) => `Found ${n} transaction${n===1?'':'s'} from ${f} file${f===1?'':'s'}.`,
+    noTx:        'No transactions found. The PDF may be scanned/image-based or use an unsupported layout.',
+    emptyMsg:    'No transactions extracted.',
+    scrollHint:  'Scroll to see all rows — download for the full dataset',
+    errFile:     'Please select a PDF file.',
+    errParse:    (name, txt) => `Failed to read "${name}": ${txt}`,
+    sheetName:   'Transactions',
+    filePrefix:  'bank_statement',
+    filesHeader: n => `${n} file${n===1?'':'s'} selected`,
+    statusWait:  'Pending',
+    statusBusy:  'Processing…',
+    statusOk:    n => `${n} transaction${n===1?'':'s'}`,
+    statusErr:   'Error',
   },
   ru: {
-    title:      'Конвертер банковских выписок',
-    subtitle:   'Загрузите PDF — скачайте как CSV или Excel',
-    dropTitle:  'Перетащите PDF выписку сюда',
-    dropSub:    'или нажмите для выбора файла — только PDF',
-    parseBtn:   'Извлечь транзакции',
-    privacy:    'Файл обрабатывается в вашем браузере — ничего не отправляется на сервер.',
+    title:       'Конвертер банковских выписок',
+    subtitle:    'Загрузите PDF — скачайте как CSV или Excel',
+    dropTitle:   'Перетащите PDF выписки сюда',
+    dropSub:     'или нажмите для выбора — поддерживается несколько PDF',
+    parseBtn:    'Извлечь транзакции',
+    privacy:     'Файл обрабатывается в вашем браузере — ничего не отправляется на сервер.',
     resultsTitle:'Извлечённые транзакции',
-    dlCsv:      'Скачать CSV',
-    dlExcel:    'Скачать Excel',
-    colDate:    'Дата',
-    colDesc:    'Описание',
-    colAmount:  'Сумма',
-    colDebit:   'Дебет',
-    colCredit:  'Кредит',
-    colBalance: 'Баланс',
-    loading1:   'Читаю PDF…',
-    loading2:   'Анализирую транзакции…',
-    demoBtn:    'Загрузить демо-данные',
-    demoNote:   '⬇ Это тестовые данные — загрузите настоящий PDF для реальной выписки.',
-    found:      n => `Найдено ${n} транзакци${n===1?'я':n<5?'и':'й'}.`,
-    noTx:       'Транзакции не найдены. PDF может быть отсканированным или иметь неподдерживаемый формат.',
-    emptyMsg:   'Транзакции не извлечены.',
-    scrollHint: 'Прокрутите для просмотра всех строк — скачайте для полного набора данных',
-    errFile:    'Пожалуйста, выберите PDF файл.',
-    errParse:   txt => `Ошибка чтения PDF: ${txt}`,
-    sheetName:  'Транзакции',
-    filePrefix: 'bank_statement',
+    dlCsv:       'Скачать CSV',
+    dlExcel:     'Скачать Excel',
+    colDate:     'Дата',
+    colSource:   'Файл',
+    colDesc:     'Описание',
+    colAmount:   'Сумма',
+    colDebit:    'Дебет',
+    colCredit:   'Кредит',
+    colBalance:  'Баланс',
+    loading1:    'Читаю PDF…',
+    loading2:    i => `Анализирую файл ${i}…`,
+    demoBtn:     'Загрузить демо-данные',
+    demoNote:    '⬇ Это тестовые данные — загрузите настоящий PDF для реальной выписки.',
+    found:       (n, f) => `Найдено ${n} транзакци${n===1?'я':n<5?'и':'й'} из ${f} файл${f===1?'а':f<5?'а':'ов'}.`,
+    noTx:        'Транзакции не найдены. PDF может быть отсканированным или иметь неподдерживаемый формат.',
+    emptyMsg:    'Транзакции не извлечены.',
+    scrollHint:  'Прокрутите для просмотра всех строк — скачайте для полного набора данных',
+    errFile:     'Пожалуйста, выберите PDF файл.',
+    errParse:    (name, txt) => `Ошибка чтения «${name}»: ${txt}`,
+    sheetName:   'Транзакции',
+    filePrefix:  'bank_statement',
+    filesHeader: n => `Выбрано ${n} файл${n===1?'':n<5?'а':'ов'}`,
+    statusWait:  'Ожидание',
+    statusBusy:  'Обработка…',
+    statusOk:    n => `${n} транзакци${n===1?'я':n<5?'и':'й'}`,
+    statusErr:   'Ошибка',
   },
 };
 
@@ -456,17 +522,13 @@ function applyLang(l) {
   const t = T[l];
   document.documentElement.lang = l;
   document.title = t.title + (l==='sr' ? ' | bankovniizvodi.rs' : '');
-
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.dataset.i18n;
     if (t[key] !== undefined) el.textContent = t[key];
   });
-
   document.querySelectorAll('.lang-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.lang === l);
   });
-
-  // Update dynamic text that's already rendered
   if (parsedRows.length) updateDynamicText();
 }
 
@@ -475,7 +537,7 @@ document.querySelectorAll('.lang-btn').forEach(btn => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// PDF.js (loaded as module)
+// PDF.js
 // ═══════════════════════════════════════════════════════════════
 let pdfjsLib;
 async function getPdfJs() {
@@ -492,9 +554,7 @@ async function getPdfJs() {
 const dropZone    = document.getElementById('dropZone');
 const fileInput   = document.getElementById('fileInput');
 const parseBtn    = document.getElementById('parseBtn');
-const fileInfo    = document.getElementById('fileInfo');
-const fileNameEl  = document.getElementById('fileNameEl');
-const fileSizeEl  = document.getElementById('fileSizeEl');
+const filesListEl = document.getElementById('filesList');
 const statusBar   = document.getElementById('statusBar');
 const statusText  = document.getElementById('statusText');
 const spinner     = document.getElementById('spinner');
@@ -509,11 +569,13 @@ const rhSub         = document.getElementById('rhSub');
 const csvBtn        = document.getElementById('csvBtn');
 const excelBtn      = document.getElementById('excelBtn');
 
-let parsedRows = [];
-let selectedFile = null;
+let parsedRows   = [];
+let selectedFiles = [];  // array of File objects
+let fileStatuses  = [];  // parallel array: { state: 'wait'|'busy'|'ok'|'err', count: number, error: string }
+let lastFileCount = 0;   // number of files used for most recent parse result
 
 // ═══════════════════════════════════════════════════════════════
-// FILE SELECTION
+// FILE MANAGEMENT
 // ═══════════════════════════════════════════════════════════════
 function fmtSize(b) {
   if (b < 1024) return b + ' B';
@@ -521,27 +583,103 @@ function fmtSize(b) {
   return (b/1048576).toFixed(1) + ' MB';
 }
 
-function onFileSelected(file) {
+function addFiles(fileList) {
   const t = T[lang];
-  if (!file || !file.name.toLowerCase().endsWith('.pdf')) {
-    setStatus('error', t.errFile); parseBtn.disabled = true; return;
+  let rejected = 0;
+  for (const file of fileList) {
+    if (!file.name.toLowerCase().endsWith('.pdf')) { rejected++; continue; }
+    const dup = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+    if (!dup) {
+      selectedFiles.push(file);
+      fileStatuses.push({ state: 'wait', count: 0, error: '' });
+    }
   }
-  selectedFile = file;
-  fileNameEl.textContent = file.name;
-  fileSizeEl.textContent = fmtSize(file.size);
-  fileInfo.style.display = 'flex';
-  parseBtn.disabled = false;
-  hideStatus();
+  if (rejected > 0) setStatus('error', t.errFile);
+  else hideStatus();
+  renderFileList();
+  parseBtn.disabled = selectedFiles.length === 0;
   parsedRows = [];
   resultsCard.style.display = 'none';
 }
 
-fileInput.addEventListener('change', () => { if (fileInput.files[0]) onFileSelected(fileInput.files[0]); });
+function removeFile(i) {
+  selectedFiles.splice(i, 1);
+  fileStatuses.splice(i, 1);
+  renderFileList();
+  parseBtn.disabled = selectedFiles.length === 0;
+  if (selectedFiles.length === 0) {
+    parsedRows = [];
+    resultsCard.style.display = 'none';
+    hideStatus();
+  }
+}
+
+function renderFileList() {
+  const t = T[lang];
+  if (selectedFiles.length === 0) {
+    filesListEl.style.display = 'none';
+    filesListEl.innerHTML = '';
+    return;
+  }
+  filesListEl.style.display = 'flex';
+
+  const header = `<div class="files-list-header">
+    <span>${esc(t.filesHeader(selectedFiles.length))}</span>
+  </div>`;
+
+  const items = selectedFiles.map((f, i) => {
+    const st = fileStatuses[i] || { state: 'wait', count: 0, error: '' };
+    let statusLabel = '';
+    let statusClass = '';
+    if      (st.state === 'wait') { statusLabel = t.statusWait; statusClass = 'wait'; }
+    else if (st.state === 'busy') { statusLabel = t.statusBusy; statusClass = 'busy'; }
+    else if (st.state === 'ok')   { statusLabel = t.statusOk(st.count); statusClass = 'ok'; }
+    else if (st.state === 'err')  { statusLabel = t.statusErr; statusClass = 'err'; }
+
+    return `<div class="file-item${st.state==='err'?' error':''}" data-index="${i}">
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="${st.state==='err'?'#dc2626':'#16a34a'}" stroke-width="1.9">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+      </svg>
+      <div class="file-item-info">
+        <div class="file-item-name" title="${esc(f.name)}">${esc(f.name)}</div>
+        <div class="file-item-meta">
+          <span>${fmtSize(f.size)}</span>
+          <span class="file-item-status ${statusClass}">${esc(statusLabel)}</span>
+        </div>
+      </div>
+      <button class="file-remove-btn" data-remove="${i}" title="Remove">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>`;
+  }).join('');
+
+  filesListEl.innerHTML = header + items;
+}
+
+filesListEl.addEventListener('click', e => {
+  const btn = e.target.closest('[data-remove]');
+  if (!btn) return;
+  removeFile(parseInt(btn.dataset.remove, 10));
+});
+
+// ═══════════════════════════════════════════════════════════════
+// FILE INPUT / DROP
+// ═══════════════════════════════════════════════════════════════
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) {
+    addFiles(fileInput.files);
+    fileInput.value = ''; // reset so the same file can be re-selected if removed
+  }
+});
+
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
 dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.classList.remove('drag-over');
-  const f = e.dataTransfer.files[0]; if (f) onFileSelected(f);
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -551,9 +689,9 @@ function setStatus(type, msg) {
   statusBar.className = 'status ' + type;
   statusBar.style.display = 'flex';
   statusText.textContent = msg;
-  spinner.style.display      = type === 'loading' ? 'block' : 'none';
-  statusIconOk.style.display = type === 'success' ? 'block' : 'none';
-  statusIconErr.style.display= type === 'error'   ? 'block' : 'none';
+  spinner.style.display       = type === 'loading' ? 'block' : 'none';
+  statusIconOk.style.display  = type === 'success' ? 'block' : 'none';
+  statusIconErr.style.display = type === 'error'   ? 'block' : 'none';
 }
 function hideStatus() { statusBar.style.display = 'none'; }
 function setProgress(pct) {
@@ -565,18 +703,17 @@ function setProgress(pct) {
 // ═══════════════════════════════════════════════════════════════
 // PDF TEXT EXTRACTION
 // ═══════════════════════════════════════════════════════════════
-async function extractText(file) {
+async function extractText(file, onPageProgress) {
   const lib = await getPdfJs();
   const buf = await file.arrayBuffer();
   const pdf = await lib.getDocument({ data: buf }).promise;
   const pages = [];
 
   for (let i = 1; i <= pdf.numPages; i++) {
-    setProgress(Math.round((i / pdf.numPages) * 55));
+    onPageProgress(i / pdf.numPages);
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
 
-    // Reconstruct lines by grouping items on the same Y coordinate
     const lineMap = new Map();
     for (const item of content.items) {
       if (!item.str?.trim()) continue;
@@ -633,7 +770,7 @@ function cleanAmt(s) {
   return isNaN(n) ? null : n;
 }
 
-function parseTransactions(text) {
+function parseTransactions(text, source) {
   const rows = [];
   const lines = text.split('\n');
   let pending = null;
@@ -667,6 +804,7 @@ function parseTransactions(text) {
 
       pending = {
         date:        parseDate(ds),
+        source,
         description: desc,
         amount,
         debit:  amount !== null && amount < 0 ? Math.abs(amount) : null,
@@ -683,43 +821,58 @@ function parseTransactions(text) {
   return rows.filter(r => r.date || r.description);
 }
 
+function shortName(filename) {
+  const base = filename.replace(/\.pdf$/i, '');
+  return base.length > 24 ? base.slice(0, 22) + '…' : base;
+}
+
+function sortByDate(rows) {
+  return [...rows].sort((a, b) => {
+    if (!a.date && !b.date) return 0;
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    return a.date.localeCompare(b.date);
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════
 // DEMO DATA
 // ═══════════════════════════════════════════════════════════════
 const DEMO_ROWS = [
-  { date:'2026-04-01', description:'Početno stanje / Opening balance',       amount:null,    debit:null,   credit:null,    balance:152430.00 },
-  { date:'2026-04-02', description:'Plaća — Firma d.o.o.',                   amount:85000.00,  debit:null,   credit:85000.00, balance:237430.00 },
-  { date:'2026-04-03', description:'Mercator — namirnice',                   amount:-4218.50,  debit:4218.50, credit:null,   balance:233211.50 },
-  { date:'2026-04-04', description:'NIS Petrol — gorivo',                    amount:-6540.00,  debit:6540.00, credit:null,   balance:226671.50 },
-  { date:'2026-04-05', description:'Raiffeisen — rata kredita',              amount:-32500.00, debit:32500.00,credit:null,   balance:194171.50 },
-  { date:'2026-04-07', description:'Amazon — pretplata Prime',               amount:-799.00,   debit:799.00,  credit:null,   balance:193372.50 },
-  { date:'2026-04-08', description:'A1 Srbija — račun za telefon',           amount:-2890.00,  debit:2890.00, credit:null,   balance:190482.50 },
-  { date:'2026-04-09', description:'Uplata stanarine — Marko Petrović',      amount:45000.00,  debit:null,   credit:45000.00, balance:235482.50 },
-  { date:'2026-04-10', description:'dm drogerie — kozmetika',                amount:-3126.80,  debit:3126.80, credit:null,   balance:232355.70 },
-  { date:'2026-04-11', description:'Lidl — namirnice',                       amount:-2944.20,  debit:2944.20, credit:null,   balance:229411.50 },
-  { date:'2026-04-14', description:'EPS — struja',                           amount:-5210.00,  debit:5210.00, credit:null,   balance:224201.50 },
-  { date:'2026-04-14', description:'Infostan — komunalije',                  amount:-8750.00,  debit:8750.00, credit:null,   balance:215451.50 },
-  { date:'2026-04-15', description:'Netflix — mesečna pretplata',            amount:-699.00,   debit:699.00,  credit:null,   balance:214752.50 },
-  { date:'2026-04-16', description:'Prenos na štedni račun',                 amount:-50000.00, debit:50000.00,credit:null,   balance:164752.50 },
-  { date:'2026-04-17', description:'Konzum — namirnice i domaćinstvo',       amount:-5631.40,  debit:5631.40, credit:null,   balance:159121.10 },
-  { date:'2026-04-18', description:'Glovo — dostava hrane',                  amount:-1890.00,  debit:1890.00, credit:null,   balance:157231.10 },
-  { date:'2026-04-21', description:'Povraćaj — Tehnomanija refundacija',     amount:12499.00,  debit:null,   credit:12499.00, balance:169730.10 },
-  { date:'2026-04-22', description:'Parking servis Beograd',                 amount:-1200.00,  debit:1200.00, credit:null,   balance:168530.10 },
-  { date:'2026-04-23', description:'MaxBet — uplate igara na sreću',         amount:-3000.00,  debit:3000.00, credit:null,   balance:165530.10 },
-  { date:'2026-04-24', description:'Apoteka Beograd — lekovi',               amount:-2340.50,  debit:2340.50, credit:null,   balance:163189.60 },
-  { date:'2026-04-25', description:'Intesa online transfer — Jelena Kovač',  amount:-15000.00, debit:15000.00,credit:null,   balance:148189.60 },
-  { date:'2026-04-28', description:'Freelance honorar — IT usluge',          amount:36000.00,  debit:null,   credit:36000.00, balance:184189.60 },
-  { date:'2026-04-29', description:'Bolt — taxi',                            amount:-980.00,   debit:980.00,  credit:null,   balance:183209.60 },
-  { date:'2026-04-30', description:'Kraj meseca — krajnje stanje',           amount:null,      debit:null,   credit:null,    balance:183209.60 },
+  { date:'2026-04-01', source:'demo_april', description:'Početno stanje / Opening balance',       amount:null,    debit:null,   credit:null,    balance:152430.00 },
+  { date:'2026-04-02', source:'demo_april', description:'Plaća — Firma d.o.o.',                   amount:85000.00,  debit:null,   credit:85000.00, balance:237430.00 },
+  { date:'2026-04-03', source:'demo_april', description:'Mercator — namirnice',                   amount:-4218.50,  debit:4218.50, credit:null,   balance:233211.50 },
+  { date:'2026-04-04', source:'demo_april', description:'NIS Petrol — gorivo',                    amount:-6540.00,  debit:6540.00, credit:null,   balance:226671.50 },
+  { date:'2026-04-05', source:'demo_april', description:'Raiffeisen — rata kredita',              amount:-32500.00, debit:32500.00,credit:null,   balance:194171.50 },
+  { date:'2026-04-07', source:'demo_april', description:'Amazon — pretplata Prime',               amount:-799.00,   debit:799.00,  credit:null,   balance:193372.50 },
+  { date:'2026-04-08', source:'demo_april', description:'A1 Srbija — račun za telefon',           amount:-2890.00,  debit:2890.00, credit:null,   balance:190482.50 },
+  { date:'2026-04-09', source:'demo_april', description:'Uplata stanarine — Marko Petrović',      amount:45000.00,  debit:null,   credit:45000.00, balance:235482.50 },
+  { date:'2026-04-10', source:'demo_april', description:'dm drogerie — kozmetika',                amount:-3126.80,  debit:3126.80, credit:null,   balance:232355.70 },
+  { date:'2026-04-11', source:'demo_april', description:'Lidl — namirnice',                       amount:-2944.20,  debit:2944.20, credit:null,   balance:229411.50 },
+  { date:'2026-04-14', source:'demo_april', description:'EPS — struja',                           amount:-5210.00,  debit:5210.00, credit:null,   balance:224201.50 },
+  { date:'2026-04-14', source:'demo_april', description:'Infostan — komunalije',                  amount:-8750.00,  debit:8750.00, credit:null,   balance:215451.50 },
+  { date:'2026-04-15', source:'demo_april', description:'Netflix — mesečna pretplata',            amount:-699.00,   debit:699.00,  credit:null,   balance:214752.50 },
+  { date:'2026-04-16', source:'demo_april', description:'Prenos na štedni račun',                 amount:-50000.00, debit:50000.00,credit:null,   balance:164752.50 },
+  { date:'2026-04-17', source:'demo_april', description:'Konzum — namirnice i domaćinstvo',       amount:-5631.40,  debit:5631.40, credit:null,   balance:159121.10 },
+  { date:'2026-04-18', source:'demo_april', description:'Glovo — dostava hrane',                  amount:-1890.00,  debit:1890.00, credit:null,   balance:157231.10 },
+  { date:'2026-04-21', source:'demo_april', description:'Povraćaj — Tehnomanija refundacija',     amount:12499.00,  debit:null,   credit:12499.00, balance:169730.10 },
+  { date:'2026-04-22', source:'demo_april', description:'Parking servis Beograd',                 amount:-1200.00,  debit:1200.00, credit:null,   balance:168530.10 },
+  { date:'2026-04-23', source:'demo_april', description:'MaxBet — uplate igara na sreću',         amount:-3000.00,  debit:3000.00, credit:null,   balance:165530.10 },
+  { date:'2026-04-24', source:'demo_april', description:'Apoteka Beograd — lekovi',               amount:-2340.50,  debit:2340.50, credit:null,   balance:163189.60 },
+  { date:'2026-04-25', source:'demo_april', description:'Intesa online transfer — Jelena Kovač',  amount:-15000.00, debit:15000.00,credit:null,   balance:148189.60 },
+  { date:'2026-04-28', source:'demo_april', description:'Freelance honorar — IT usluge',          amount:36000.00,  debit:null,   credit:36000.00, balance:184189.60 },
+  { date:'2026-04-29', source:'demo_april', description:'Bolt — taxi',                            amount:-980.00,   debit:980.00,  credit:null,   balance:183209.60 },
+  { date:'2026-04-30', source:'demo_april', description:'Kraj meseca — krajnje stanje',           amount:null,      debit:null,   credit:null,    balance:183209.60 },
 ];
 
 const demoBtn = document.getElementById('demoBtn');
-
 demoBtn.addEventListener('click', () => {
   const t = T[lang];
   parsedRows = DEMO_ROWS;
-  selectedFile = null;
-  fileInfo.style.display = 'none';
+  lastFileCount = 1;
+  selectedFiles = [];
+  fileStatuses  = [];
+  renderFileList();
   parseBtn.disabled = true;
   renderTable(parsedRows);
   setStatus('success', t.demoNote);
@@ -731,32 +884,55 @@ demoBtn.addEventListener('click', () => {
 // MAIN PARSE ACTION
 // ═══════════════════════════════════════════════════════════════
 parseBtn.addEventListener('click', async () => {
-  if (!selectedFile) return;
+  if (!selectedFiles.length) return;
   const t = T[lang];
   parseBtn.disabled = true;
   parsedRows = [];
   resultsCard.style.display = 'none';
+  fileStatuses = selectedFiles.map(() => ({ state: 'wait', count: 0, error: '' }));
+  renderFileList();
   setProgress(0);
   setStatus('loading', t.loading1);
 
-  try {
-    const text = await extractText(selectedFile);
-    setStatus('loading', t.loading2);
-    setProgress(65);
+  const total = selectedFiles.length;
+  const allRows = [];
 
-    parsedRows = parseTransactions(text);
-    setProgress(100);
+  try {
+    for (let i = 0; i < total; i++) {
+      const file = selectedFiles[i];
+      fileStatuses[i].state = 'busy';
+      renderFileList();
+      setStatus('loading', t.loading2(i + 1));
+
+      try {
+        const text = await extractText(file, pageFrac => {
+          const overall = ((i + pageFrac * 0.85) / total) * 100;
+          setProgress(Math.round(overall));
+        });
+
+        const rows = parseTransactions(text, shortName(file.name));
+        fileStatuses[i] = { state: 'ok', count: rows.length, error: '' };
+        allRows.push(...rows);
+      } catch (err) {
+        fileStatuses[i] = { state: 'err', count: 0, error: err.message };
+        setStatus('error', t.errParse(file.name, err.message));
+      }
+
+      renderFileList();
+      setProgress(Math.round(((i + 1) / total) * 100));
+    }
+
+    parsedRows = sortByDate(allRows);
+    lastFileCount = total;
     renderTable(parsedRows);
 
     if (parsedRows.length === 0) {
       setStatus('error', t.noTx);
     } else {
-      setStatus('success', t.found(parsedRows.length));
+      setStatus('success', t.found(parsedRows.length, total));
       resultsCard.style.display = 'block';
       resultsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  } catch (err) {
-    setStatus('error', t.errParse(err.message));
   } finally {
     parseBtn.disabled = false;
   }
@@ -787,7 +963,7 @@ function renderTable(rows) {
   rhSub.textContent = rows.length > 0 ? t.scrollHint : '';
 
   if (!rows.length) {
-    tableBody.innerHTML = `<tr><td colspan="6">
+    tableBody.innerHTML = `<tr><td colspan="7">
       <div class="empty-state">
         <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.1">
           <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -800,6 +976,7 @@ function renderTable(rows) {
 
   tableBody.innerHTML = rows.map(r => `<tr>
     <td>${esc(r.date)}</td>
+    <td class="td-source" title="${esc(r.source ?? '')}">${esc(r.source ?? '')}</td>
     <td class="td-desc">${esc(r.description)}</td>
     <td>${amountCell(r.amount)}</td>
     <td>${r.debit  !== null ? `<span class="td-amount neg">${fmtNum(r.debit)}</span>`  : ''}</td>
@@ -811,16 +988,19 @@ function renderTable(rows) {
 function updateDynamicText() {
   const t = T[lang];
   rhSub.textContent = parsedRows.length > 0 ? t.scrollHint : '';
+  if (parsedRows.length) {
+    setStatus('success', t.found(parsedRows.length, lastFileCount));
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
-// CSV EXPORT  (readable: real numbers, semicolon separator)
+// CSV EXPORT
 // ═══════════════════════════════════════════════════════════════
 csvBtn.addEventListener('click', () => {
   if (!parsedRows.length) return;
   const t = T[lang];
-  const cols = [t.colDate, t.colDesc, t.colAmount, t.colDebit, t.colCredit, t.colBalance];
-  const sep = ';';  // semicolon — opens correctly in European Excel locales
+  const cols = [t.colDate, t.colSource, t.colDesc, t.colAmount, t.colDebit, t.colCredit, t.colBalance];
+  const sep = ';';
 
   const escape = v => {
     const s = v === null || v === undefined ? '' : String(v);
@@ -835,6 +1015,7 @@ csvBtn.addEventListener('click', () => {
     cols.map(escape).join(sep),
     ...parsedRows.map(r => [
       escape(r.date),
+      escape(r.source ?? ''),
       escape(r.description),
       numStr(r.amount),
       numStr(r.debit),
@@ -847,17 +1028,17 @@ csvBtn.addEventListener('click', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// EXCEL EXPORT  (formatted: real numbers, colored amounts, autofit)
+// EXCEL EXPORT
 // ═══════════════════════════════════════════════════════════════
 excelBtn.addEventListener('click', () => {
   if (!parsedRows.length) return;
   const t = T[lang];
 
-  const headers = [t.colDate, t.colDesc, t.colAmount, t.colDebit, t.colCredit, t.colBalance];
+  const headers = [t.colDate, t.colSource, t.colDesc, t.colAmount, t.colDebit, t.colCredit, t.colBalance];
 
-  // Build data array with real numbers (not strings)
   const data = parsedRows.map(r => [
     r.date ?? '',
+    r.source ?? '',
     r.description ?? '',
     r.amount  ?? '',
     r.debit   ?? '',
@@ -868,24 +1049,22 @@ excelBtn.addEventListener('click', () => {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
 
-  // Column widths
   ws['!cols'] = [
     { wch: 13 },  // Date
-    { wch: 46 },  // Description
+    { wch: 22 },  // Source
+    { wch: 42 },  // Description
     { wch: 14 },  // Amount
     { wch: 14 },  // Debit
     { wch: 14 },  // Credit
     { wch: 16 },  // Balance
   ];
 
-  // Freeze header row
   ws['!freeze'] = { xSplit: 0, ySplit: 1 };
 
-  // Number format for amount columns (cols 2–5, 0-indexed)
   const numFmt = '#,##0.00';
   const range = XLSX.utils.decode_range(ws['!ref']);
   for (let r = 1; r <= range.e.r; r++) {
-    for (let c = 2; c <= 5; c++) {
+    for (let c = 3; c <= 6; c++) {  // Amount, Debit, Credit, Balance (shifted by source col)
       const addr = XLSX.utils.encode_cell({ r, c });
       if (ws[addr] && ws[addr].v !== '') {
         ws[addr].t = 'n';
